@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 model = tf.keras.models.load_model('modelo_clasificador_onda_r.keras')
 
 # Cargar los datos de prueba
-with open('test.json', 'r') as f:
+with open('test.json', 'r') as f:#El archivo test contiene ondas del archivo sel102 y entrenamiento sel30
     data = json.load(f)
 
 X = np.array(data['normalized_waves'])

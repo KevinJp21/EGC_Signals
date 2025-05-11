@@ -1,0 +1,6 @@
+# Archivos de entorno
+.env
+
+# Directorios de datos
+/QT_Database/
+/processed_data/

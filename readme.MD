@@ -1,77 +1,129 @@
-# Procesamiento de Señales ECG
+# Procesamiento de Señales ECG y Clasificación de Ondas R
 
-Este proyecto realiza un procesamiento de señales ECG usando Python. El objetivo es detectar ondas R en un registro de 10 segundos, visualizarlas individualmente, y almacenar los datos procesados para su análisis. A continuación, se describe brevemente el flujo de trabajo:
+Este proyecto realiza el procesamiento de señales ECG y la clasificación de ondas R usando Python y TensorFlow. El objetivo es detectar y clasificar ondas R en registros ECG, procesar los datos y entrenar un modelo de clasificación ligero para microcontroladores.
 
 ## Flujo de Trabajo
 
-1. **Lectura del archivo ECG** (`appCeldas.py`)
-   - Se carga una señal ECG del conjunto de datos QT Database mediante la librería wfdb
-   - Se extraen los primeros 10 segundos del primer canal
+1. **Procesamiento de Señales** (`Process_Waves/process_waves.py`)
+   - Carga señales ECG del conjunto de datos QT Database
+   - Detecta y extrae ondas R
+   - Normaliza las amplitudes
+   - Genera etiquetas binarias
+   - Guarda los datos procesados en formato JSON
 
-2. **Procesamiento de la señal**
-   - Se construye un eje de tiempo para la señal
-   - Se detectan los picos R usando find_peaks
-   - Se extraen ventanas de 120 ms centradas en cada pico R
-   - Se normalizan las amplitudes de las ondas
-   - Se generan etiquetas binarias (1 en el pico R, 0 en el resto)
-
-3. **Almacenamiento de datos** (`datos_ondas.json`)
-   - Los datos procesados se guardan en formato JSON con la siguiente estructura:
-     - `senales_normalizadas`: Amplitudes normalizadas de cada onda
-     - `etiquetas`: Etiquetas binarias para cada muestra
-     - `tiempos`: Tiempos correspondientes a cada muestra
-     - `duraciones`: Duración de cada ventana
-     - `metadata`: Información sobre frecuencia de muestreo y parámetros
-
-4. **Visualización** (`visualizar_datos.py`)
-   - Visualización interactiva de ondas individuales
-   - Visualización de todas las ondas superpuestas
-   - Información detallada de cada onda:
-     - Tiempo absoluto y relativo del pico R
-     - Valor normalizado en el pico
-     - Duración de la ventana
+2. **Entrenamiento del Modelo** (`Model/training.py`)
+   - Carga los datos procesados
+   - Entrena un modelo CNN 1D ligero
+   - Evalúa el rendimiento del modelo
+   - Guarda el modelo entrenado
+   - Genera gráficos de entrenamiento
 
 ## Estructura del Proyecto
 
 ```
 .
-├── appCeldas.py        # Script de procesamiento principal
-├── visualizar_datos.py # Script de visualización
-├── datos_ondas.json   # Datos procesados
-├── QT_Database/       # Carpeta con los archivos de señales ECG
-│   └── sel30/        # Ejemplo de registro ECG
-└── README.md         # Este archivo
+├── Process_Waves/
+│   ├── process_waves.py    # Script de procesamiento
+│   ├── all_waves_data.json # Datos procesados
+│   └── .gitignore
+├── Model/
+│   ├── training.py         # Script de entrenamiento
+│   ├── modelo_clasificador_onda_r.keras  # Modelo entrenado
+│   └── historial_entrenamiento.png       # Gráficos de entrenamiento
+├── QT_Database/           # Carpeta con archivos ECG
+└── README.md             # Este archivo
 ```
+
+## Estructura de Datos
+
+### all_waves_data.json
+```json
+{
+  "datos": [
+    {
+      "normalized_waves": [...],
+      "tags": [...],
+      "metadata": {
+        "frecuencia_muestreo": float,
+        "source": "nombre_archivo",
+        "total_ondas": int,
+        "ondas_r": int,
+        "otras_ondas": int
+      }
+    }
+  ],
+  "resumen": {
+    "total_archivos_procesados": int,
+    "archivos_fallidos": int,
+    "total_ondas": int,
+    "total_ondas_r": int,
+    "total_otras_ondas": int
+  }
+}
+```
+
+## Modelo de Clasificación
+
+El modelo implementado es una CNN 1D ligera, optimizada para microcontroladores:
+
+```python
+model = Sequential([
+    Conv1D(16, 3, activation='relu', input_shape=(X_train.shape[1], 1)),
+    MaxPooling1D(2),
+    Flatten(),
+    Dense(1, activation='sigmoid')
+])
+```
+
+Características del modelo:
+- Arquitectura minimalista (2 capas principales)
+- Optimizado para microcontroladores
+- Entrenamiento con early stopping
+- 20 épocas máximas
+- Batch size de 32
 
 ## Uso
 
-1. Asegúrate de tener los archivos de señales ECG en la carpeta `QT_Database`
-
-2. Procesa los datos:
+1. **Procesar las señales**:
    ```bash
-   python appCeldas.py
-   ```
-   Esto generará el archivo `datos_ondas.json`
-
-3. Visualiza los resultados:
-   ```bash
-   python visualizar_datos.py
+   cd Process_Waves
+   python process_waves.py
    ```
 
-4. Interactúa con la visualización:
-   - Ejecuta las celdas individualmente en tu IDE
-   - Para ver ondas individuales:
-     - Usa la flecha derecha (→) para la siguiente onda
-     - Usa la flecha izquierda (←) para la onda anterior
-     - Presiona ESC para cerrar la ventana
-   - Para ver todas las ondas superpuestas, ejecuta la celda correspondiente
+2. **Entrenar el modelo**:
+   ```bash
+   cd Model
+   python training.py
+   ```
+
+## Requisitos
+
+Crear y activar el entorno virtual:
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate  # Windows
+source .venv/bin/activate # Linux/Mac
+```
+
+Instalar dependencias:
+```bash
+pip install -r requirements.txt
+```
+
+## Dependencias Principales
+- tensorflow
+- numpy
+- matplotlib
+- scikit-learn
+- wfdb
+- pandas
 
 ## Notas
-- La señal ECG debe estar en formato compatible con wfdb
-- Los datos procesados se normalizan para facilitar su análisis
-- Cada onda R se estandariza a una ventana de 120 ms
-- Los tiempos se almacenan tanto en absolutos como relativos
-- La visualización permite analizar cada onda en detalle
+- El modelo está optimizado para ser ligero y eficiente
+- Los datos se normalizan para mejorar el entrenamiento
+- Se incluye early stopping para evitar sobreentrenamiento
+- Los resultados del entrenamiento se guardan en gráficos
+- El modelo final se guarda en formato .keras
 
 # Creación de Entorno Virtual e Instalación de Dependencias
 
@@ -126,18 +178,6 @@ python visualizar_datos.py
 ```
 
 Usa tu IDE favorito para ejecutar las celdas individualmente y explorar los datos interactivamente.
-
----
-
-## 4. Desactivar el Entorno Virtual
-
-Cuando termines de trabajar en el entorno virtual, puedes desactivarlo con:
-
-```sh
-deactivate
-```
-
-Esto restaurará el entorno global de Python.
 
 ---
 ## Estructira del archvio all_waves_data.json

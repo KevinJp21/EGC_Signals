@@ -3,6 +3,9 @@ import os
 import csv
 from tqdm import tqdm
 
+def es_letra(caracter):
+    return caracter.isalpha()
+
 def procesar_anotaciones(ruta_base, archivo_pu):
     try:
         # Leer las anotaciones usando wfdb.rdann
@@ -18,60 +21,42 @@ def procesar_anotaciones(ruta_base, archivo_pu):
             writer.writerow(['Time', 'Sample #', 'Type'])  # encabezado
 
             i = 0
-            while i < len(anotaciones.sample) - 2:
-                simbolo1 = anotaciones.symbol[i]
-                simbolo2 = anotaciones.symbol[i + 1]
-                simbolo3 = anotaciones.symbol[i + 2]
+            while i < len(anotaciones.sample):
+                if i < len(anotaciones.sample) - 2:  # Asegurarse de que hay suficientes símbolos para procesar
+                    if anotaciones.symbol[i] == '(':
+                        # Buscar el paréntesis de cierre
+                        j = i + 1
+                        letras_encontradas = []
+                        nuevo_inicio = None
+                        
+                        # Recolectar todas las letras hasta encontrar el paréntesis de cierre
+                        while j < len(anotaciones.sample) and anotaciones.symbol[j] != ')':
+                            if anotaciones.symbol[j] == '(':
+                                nuevo_inicio = j
+                                break
+                            if es_letra(anotaciones.symbol[j]):
+                                letras_encontradas.append(j)
+                            j += 1
+                        
+                        # Si encontramos un nuevo paréntesis de inicio
+                        if nuevo_inicio is not None:
+                            i = nuevo_inicio
+                            continue
+                            
+                        # Si encontramos el patrón válido (paréntesis, letras, paréntesis)
+                        if j < len(anotaciones.sample) and anotaciones.symbol[j] == ')' and letras_encontradas:
+                            # Guardar todo el grupo incluyendo paréntesis
+                            for idx in range(i, j + 1):
+                                tiempo = anotaciones.sample[idx] / anotaciones.fs
+                                time_str = f"{tiempo:.3f}"
+                                sample = anotaciones.sample[idx]
+                                tipo = anotaciones.symbol[idx]
+                                writer.writerow([time_str, sample, tipo])
+                            i = j + 1
+                            continue
                 
-                # Patrón ( N )
-                if simbolo1 == '(' and simbolo2 == 'N' and simbolo3 == ')':
-                    # Guardar el grupo completo
-                    for j in range(3):
-                        idx = i + j
-                        tiempo = anotaciones.sample[idx] / anotaciones.fs
-                        time_str = f"{tiempo:.3f}"
-                        sample = anotaciones.sample[idx]
-                        tipo = anotaciones.symbol[idx]
-                        writer.writerow([time_str, sample, tipo])
-                    i += 3
-                
-                # Patrón ( N N )
-                elif i < len(anotaciones.sample) - 3 and simbolo1 == '(' and simbolo2 == 'N' and simbolo3 == 'N' and anotaciones.symbol[i + 3] == ')':
-                    # Guardar el grupo completo
-                    for j in range(4):
-                        idx = i + j
-                        tiempo = anotaciones.sample[idx] / anotaciones.fs
-                        time_str = f"{tiempo:.3f}"
-                        sample = anotaciones.sample[idx]
-                        tipo = anotaciones.symbol[idx]
-                        writer.writerow([time_str, sample, tipo])
-                    i += 4
-
-                # Patrón ( t )
-                elif simbolo1 == '(' and simbolo2 == 't' and simbolo3 == ')':
-                    # Guardar el grupo completo
-                    for j in range(3):
-                        idx = i + j
-                        tiempo = anotaciones.sample[idx] / anotaciones.fs
-                        time_str = f"{tiempo:.3f}"
-                        sample = anotaciones.sample[idx]
-                        tipo = anotaciones.symbol[idx]
-                        writer.writerow([time_str, sample, tipo])
-                    i += 3
-                
-                # Patrón ( t t )
-                elif i < len(anotaciones.sample) - 3 and simbolo1 == '(' and simbolo2 == 't' and simbolo3 == 't' and anotaciones.symbol[i + 3] == ')':
-                    # Guardar el grupo completo
-                    for j in range(4):
-                        idx = i + j
-                        tiempo = anotaciones.sample[idx] / anotaciones.fs
-                        time_str = f"{tiempo:.3f}"
-                        sample = anotaciones.sample[idx]
-                        tipo = anotaciones.symbol[idx]
-                        writer.writerow([time_str, sample, tipo])
-                    i += 4
-                else:
-                    i += 1
+                # Si no se encontró un patrón válido, avanzar al siguiente símbolo
+                i += 1
         
         return True
     except Exception as e:
